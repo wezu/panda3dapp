@@ -1,3 +1,4 @@
+from __future__ import print_function
 from PandaApp import PandaApp
 from direct.interval.IntervalGlobal import *
 
@@ -5,7 +6,9 @@ class Demo(PandaApp):
 
     def __init__(self):
         #init the base class py3 style
-        super().__init__()
+        #super().__init__()
+        #py2 style
+        super(Demo, self).__init__()
 
         #load a model, and reparent it to render
         #model=self.loader.load_model('frowney')
@@ -32,7 +35,7 @@ class Demo(PandaApp):
 
         #test exit event
         #this one fires when the window is closed by the user
-        self.accept('window-event-closed', print, ['Window got closed!'])
+        self.accept('window-event-close', print, ['Window got closed!'])
         #this one fires before sys.exit
         self.accept('exit', print, ['Shutting down!'])
 

@@ -1,3 +1,4 @@
+from six import with_metaclass
 from panda3d.core import *
 load_prc_file_data("", "notify-level-prc error")
 
@@ -63,7 +64,7 @@ class MetaConfig(type):
     def __contains__(cls, item):
         return ConfigVariable(item).hasValue()
 
-class SimpleConfig(object, metaclass=MetaConfig):
+class SimpleConfig(with_metaclass(MetaConfig, object)):
     """This class is a wrapper for Panda3D ConfigVariable*
     with dict like interface (SimpleConfig['some_config_name']=some_value)
     """

@@ -16,7 +16,6 @@ It will NOT:
 -setup Jobs
 -create render2dp, aspect2dp and any aspect2d children (a2dTop, a2dBottomCenterNs, etc)
 -enforce a singelton pattern (shoot your own foot if you like)
--work on py 2.x (?)
 -walk the dog, put out the trash
 """
 
@@ -37,7 +36,10 @@ from direct.showbase import AppRunnerGlobal
 
 from simpleconfig import SimpleConfig as Config
 
-from functools import lru_cache
+try:
+    from functools import lru_cache
+except ImportError:
+    from lru_backport import lru_cache
 import time
 import os
 
@@ -49,10 +51,8 @@ class PandaApp(object):
         # runtime environment (ie. from a .p3d file).
         self.app_runner = AppRunnerGlobal.appRunner
 
+        #store the Config class, it's nice, use it
         self.config=Config
-
-        # This is a list of all cameras created with makeCamera, including base.cam.
-        self.cam_list = []
 
         #Set the default loader... for some reason
         self.graphics_engine = GraphicsEngine.get_global_ptr()
@@ -107,7 +107,7 @@ class PandaApp(object):
         self.task_mgr.globalClock = self.global_clock
 
         #Listen for window shape, size and focus change events
-        self.accept('window-event', self.window_event)
+        self.accept('window-event', self._on_window_event)
 
         # Start render_frame_loop
         self.restart()
@@ -174,7 +174,6 @@ class PandaApp(object):
             self.lens.set_aspect_ratio(self.get_aspect_ratio())
             cam_node.set_lens(self.lens)
             self.cam = self.camera.attach_new_node(cam_node)
-            self.cam_list.append(self.cam)
             dr = self.win.make_display_region(*(0, 1, 0, 1))
             dr.set_sort(0)
             dr.set_camera(self.cam)
@@ -283,22 +282,7 @@ class PandaApp(object):
             # If the window is WIDE, lets expand the left and right
             self.aspect2d.set_scale(1.0 / aspectRatio, 1.0, 1.0)
 
-    def set_frame_rate_meter(self, flag):
-        """
-        Turns on or off (according to flag) a standard frame rate
-        meter in the upper-right corner of the main window.
-        """
-        if flag:
-            if not getattr(self, 'frame_rate_meter', None):
-                self.frame_rate_meter = FrameRateMeter('frameRateMeter')
-                self.frame_rate_meter.setup_window(self.win)
-        else:
-            if getattr(self, 'frame_rate_meter', None):
-                self.frame_rate_meter.clear_window()
-                del self.frame_rate_meter
-
-
-    def window_event(self, win):
+    def _on_window_event(self, win):
         #fire the event only for our window
         if getattr(self, 'win', None):
             if win != self.win:
@@ -319,7 +303,7 @@ class PandaApp(object):
             self.send('window-event-resize')
         #window is closed
         if not properties.get_open():
-            self.send('window-event-closed')
+            self.send('window-event-close')
             self.exit()
         #window focused
         if properties.get_foreground():
@@ -333,10 +317,24 @@ class PandaApp(object):
         if properties.get_minimized():
             if not self.minimized:
                 self.minimized=True
-                self.send('window-event-minimized')
+                self.send('window-event-minimize')
         elif self.minimized:
             self.minimized=False
-            self.send('window-event-restored')
+            self.send('window-event-restore')
+
+    def set_frame_rate_meter(self, flag):
+        """
+        Turns on or off (according to flag) a standard frame rate
+        meter in the upper-right corner of the main window.
+        """
+        if flag:
+            if not getattr(self, 'frame_rate_meter', None):
+                self.frame_rate_meter = FrameRateMeter('frameRateMeter')
+                self.frame_rate_meter.setup_window(self.win)
+        else:
+            if getattr(self, 'frame_rate_meter', None):
+                self.frame_rate_meter.clear_window()
+                del self.frame_rate_meter
 
     def exit(self):
         self.send('exit')
@@ -433,7 +431,6 @@ class PandaApp(object):
             return model
         else:
             return self.loader.load_model(*args, **kwargs)
-
 
     def load_tex(self, *args, **kwargs):
         return self.loader.load_texture(*args, **kwargs)
